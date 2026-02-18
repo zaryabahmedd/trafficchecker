@@ -625,8 +625,11 @@ async function fetchSimilarWebData(domain: string): Promise<SimilarWebData> {
       totalVisits: eng?.Visits != null ? Math.round(Number(eng.Visits)) : null,
     };
 
+    const rawRank = data.GlobalRank?.Rank ?? data.GlobalRank;
+    const globalRank = typeof rawRank === 'number' ? rawRank : null;
+
     return {
-      globalRank: data.GlobalRank?.Rank ?? data.GlobalRank ?? null,
+      globalRank,
       estimatedMonthlyVisits: latestVisits,
       monthlyVisitHistory,
       topCountries,

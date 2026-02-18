@@ -481,30 +481,7 @@ export default function Home() {
                 </div>
 
                 {/* Traffic Details Row */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Global Rank</div>
-                    <div className="text-xl font-bold text-red-400">
-                      {result.traffic.globalRank
-                        ? `#${result.traffic.globalRank.toLocaleString()}`
-                        : "Unranked"}
-                    </div>
-                    {result.traffic.similarWebRank && result.traffic.trancoRank && result.traffic.similarWebRank !== result.traffic.trancoRank && (
-                      <div className="text-[10px] text-gray-500 mt-1">
-                        SW #{result.traffic.similarWebRank.toLocaleString()} · Tranco #{result.traffic.trancoRank.toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Category</div>
-                    <div className="text-lg font-bold text-white truncate" title={result.traffic.similarWebCategory || ""}>
-                      {result.traffic.similarWebCategory
-                        ? result.traffic.similarWebCategory.split("/").pop()?.replace(/_/g, " ") || "N/A"
-                        : "N/A"}
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
                     <div className="text-xs text-gray-400 mb-1">Traffic Level</div>
                     <div className="text-xl font-bold text-emerald-400">
@@ -581,26 +558,139 @@ export default function Home() {
                 {result.traffic.monthlyTrend && result.traffic.monthlyTrend.length > 1 && (
                   <div className="mt-4 bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10">
                     <div className="text-xs text-gray-400 mb-3">Monthly Visit Trend</div>
-                    <div className="flex items-end gap-1 h-24">
+                    <div className="relative">
                       {(() => {
                         const trend = result.traffic.monthlyTrend!;
                         const maxVal = Math.max(...trend.map((t) => t.visits));
-                        return trend.map((m, i) => {
-                          const height = maxVal > 0 ? (m.visits / maxVal) * 100 : 10;
-                          const month = new Date(m.date).toLocaleDateString("en-US", { month: "short" });
-                          return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 px-2 py-1 rounded text-[10px] text-white whitespace-nowrap pointer-events-none z-10">
-                                {m.formatted}
-                              </div>
-                              <div
-                                className="w-full rounded-t bg-gradient-to-t from-red-600 to-red-400 hover:from-red-500 hover:to-red-300 transition-colors min-h-[4px]"
-                                style={{ height: `${height}%` }}
-                              />
-                              <span className="text-[9px] text-gray-500">{month}</span>
-                            </div>
-                          );
+                        const minVal = Math.min(...trend.map((t) => t.visits));
+                        const range = maxVal - minVal || 1;
+                        const height = 120;
+                        const width = 100;
+                        const padding = { top: 10, bottom: 25, left: 5, right: 5 };
+                        const chartHeight = height - padding.top - padding.bottom;
+                        const chartWidth = width - padding.left - padding.right;
+                        
+                        // Calculate points
+                        const points = trend.map((m, i) => {
+                          const x = padding.left + (i / (trend.length - 1)) * chartWidth;
+                          const y = padding.top + chartHeight - ((m.visits - minVal) / range) * chartHeight;
+                          return { x, y, data: m };
                         });
+                        
+                        // Create smooth curve path using cardinal spline
+                        const createSmoothPath = (pts: { x: number; y: number }[]) => {
+                          if (pts.length < 2) return "";
+                          let path = `M ${pts[0].x} ${pts[0].y}`;
+                          for (let i = 0; i < pts.length - 1; i++) {
+                            const p0 = pts[Math.max(0, i - 1)];
+                            const p1 = pts[i];
+                            const p2 = pts[i + 1];
+                            const p3 = pts[Math.min(pts.length - 1, i + 2)];
+                            const cp1x = p1.x + (p2.x - p0.x) / 6;
+                            const cp1y = p1.y + (p2.y - p0.y) / 6;
+                            const cp2x = p2.x - (p3.x - p1.x) / 6;
+                            const cp2y = p2.y - (p3.y - p1.y) / 6;
+                            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+                          }
+                          return path;
+                        };
+                        
+                        const linePath = createSmoothPath(points);
+                        const areaPath = linePath + ` L ${points[points.length - 1].x} ${height - padding.bottom} L ${points[0].x} ${height - padding.bottom} Z`;
+                        
+                        return (
+                          <div className="relative">
+                            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32" preserveAspectRatio="none">
+                              <defs>
+                                <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                  <stop offset="0%" stopColor="rgb(239, 68, 68)" stopOpacity="0.3" />
+                                  <stop offset="100%" stopColor="rgb(239, 68, 68)" stopOpacity="0.02" />
+                                </linearGradient>
+                                <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                  <stop offset="0%" stopColor="rgb(220, 38, 38)" />
+                                  <stop offset="50%" stopColor="rgb(239, 68, 68)" />
+                                  <stop offset="100%" stopColor="rgb(248, 113, 113)" />
+                                </linearGradient>
+                                <filter id="glow">
+                                  <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+                                  <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                  </feMerge>
+                                </filter>
+                              </defs>
+                              {/* Grid lines */}
+                              {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
+                                <line
+                                  key={i}
+                                  x1={padding.left}
+                                  y1={padding.top + ratio * chartHeight}
+                                  x2={width - padding.right}
+                                  y2={padding.top + ratio * chartHeight}
+                                  stroke="rgba(255,255,255,0.05)"
+                                  strokeWidth="0.3"
+                                />
+                              ))}
+                              {/* Area fill */}
+                              <path d={areaPath} fill="url(#areaGradient)" />
+                              {/* Line */}
+                              <path
+                                d={linePath}
+                                fill="none"
+                                stroke="url(#lineGradient)"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                filter="url(#glow)"
+                              />
+                              {/* Data points */}
+                              {points.map((p, i) => (
+                                <circle
+                                  key={i}
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r="2"
+                                  fill="rgb(239, 68, 68)"
+                                  stroke="white"
+                                  strokeWidth="0.8"
+                                />
+                              ))}
+                            </svg>
+                            {/* Hover areas with tooltips - positioned outside SVG */}
+                            {points.map((p, i) => {
+                              const month = new Date(p.data.date).toLocaleDateString("en-US", { month: "short" });
+                              const year = new Date(p.data.date).getFullYear();
+                              const leftPercent = (p.x / width) * 100;
+                              const topPercent = (p.y / height) * 100;
+                              return (
+                                <div
+                                  key={i}
+                                  className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
+                                  style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
+                                >
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
+                                    <div className="bg-gray-900 px-3 py-2 rounded-lg shadow-xl text-center whitespace-nowrap border border-gray-600">
+                                      <div className="text-xs font-semibold text-red-400">{month} {year}</div>
+                                      <div className="text-sm font-bold text-white">{p.data.formatted} visits</div>
+                                    </div>
+                                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900 border-r border-b border-gray-600 rotate-45"></div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {/* X-axis labels */}
+                            <div className="flex justify-between mt-1 px-1">
+                              {trend.map((m, i) => {
+                                const month = new Date(m.date).toLocaleDateString("en-US", { month: "short" });
+                                return (
+                                  <div key={i} className="text-[9px] text-gray-500">
+                                    {month}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
                       })()}
                     </div>
                   </div>
