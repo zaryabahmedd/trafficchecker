@@ -53,6 +53,7 @@ interface SimilarWebData {
     totalVisits: number | null;
   };
   category: string | null;
+  topKeywords: { name: string; estimatedValue: number; volume: number; cpc: number | null }[];
 }
 
 interface CountryTraffic {
@@ -569,6 +570,7 @@ const EMPTY_SW: SimilarWebData = {
   topCountries: [],
   engagements: { bounceRate: null, pagesPerVisit: null, avgVisitDuration: null, totalVisits: null },
   category: null,
+  topKeywords: [],
 };
 
 async function fetchSimilarWebData(domain: string): Promise<SimilarWebData> {
@@ -635,6 +637,14 @@ async function fetchSimilarWebData(domain: string): Promise<SimilarWebData> {
       topCountries,
       engagements,
       category: data.Category ?? null,
+      topKeywords: Array.isArray(data.TopKeywords)
+        ? data.TopKeywords.map((k: any) => ({
+          name: k.Name,
+          estimatedValue: k.EstimatedValue,
+          volume: k.Volume,
+          cpc: k.Cpc || null,
+        }))
+        : [],
     };
   } catch {
     return { ...EMPTY_SW };
@@ -829,10 +839,10 @@ export async function POST(req: NextRequest) {
     // ━━━ Monthly trend (for chart) ━━━
     const monthlyTrend = swData.monthlyVisitHistory.length > 0
       ? swData.monthlyVisitHistory.map((m) => ({
-          date: m.date,
-          visits: m.visits,
-          formatted: formatNumber(m.visits),
-        })).reverse()   // oldest first for chart
+        date: m.date,
+        visits: m.visits,
+        formatted: formatNumber(m.visits),
+      })).reverse()   // oldest first for chart
       : null;
 
     const result = {
@@ -888,6 +898,7 @@ export async function POST(req: NextRequest) {
         },
         cruxMetrics: pagespeedData.cruxMetrics,
       },
+      topKeywords: swData.topKeywords,
     };
 
     return NextResponse.json(result);

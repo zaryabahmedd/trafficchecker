@@ -41,6 +41,7 @@ interface AnalysisResult {
     }[] | null;
     similarWebCategory: string | null;
   };
+  topKeywords: { name: string; estimatedValue: number; volume: number; cpc: number | null }[];
   site: {
     statusCode: number;
     responseTime: number;
@@ -491,10 +492,9 @@ export default function Home() {
 
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 text-center">
                     <div className="text-xs text-gray-400 mb-1">Confidence</div>
-                    <div className={`text-xl font-bold ${
-                      result.traffic.confidence === "High" ? "text-emerald-400" :
+                    <div className={`text-xl font-bold ${result.traffic.confidence === "High" ? "text-emerald-400" :
                       result.traffic.confidence === "Medium" ? "text-amber-400" : "text-red-400"
-                    }`}>
+                      }`}>
                       {result.traffic.confidence}
                     </div>
                   </div>
@@ -569,14 +569,14 @@ export default function Home() {
                         const padding = { top: 10, bottom: 25, left: 5, right: 5 };
                         const chartHeight = height - padding.top - padding.bottom;
                         const chartWidth = width - padding.left - padding.right;
-                        
+
                         // Calculate points
                         const points = trend.map((m, i) => {
                           const x = padding.left + (i / (trend.length - 1)) * chartWidth;
                           const y = padding.top + chartHeight - ((m.visits - minVal) / range) * chartHeight;
                           return { x, y, data: m };
                         });
-                        
+
                         // Create smooth curve path using cardinal spline
                         const createSmoothPath = (pts: { x: number; y: number }[]) => {
                           if (pts.length < 2) return "";
@@ -594,10 +594,10 @@ export default function Home() {
                           }
                           return path;
                         };
-                        
+
                         const linePath = createSmoothPath(points);
                         const areaPath = linePath + ` L ${points[points.length - 1].x} ${height - padding.bottom} L ${points[0].x} ${height - padding.bottom} Z`;
-                        
+
                         return (
                           <div className="relative">
                             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-32" preserveAspectRatio="none">
@@ -612,10 +612,10 @@ export default function Home() {
                                   <stop offset="100%" stopColor="rgb(248, 113, 113)" />
                                 </linearGradient>
                                 <filter id="glow">
-                                  <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+                                  <feGaussianBlur stdDeviation="1" result="coloredBlur" />
                                   <feMerge>
-                                    <feMergeNode in="coloredBlur"/>
-                                    <feMergeNode in="SourceGraphic"/>
+                                    <feMergeNode in="coloredBlur" />
+                                    <feMergeNode in="SourceGraphic" />
                                   </feMerge>
                                 </filter>
                               </defs>
@@ -643,18 +643,7 @@ export default function Home() {
                                 strokeLinejoin="round"
                                 filter="url(#glow)"
                               />
-                              {/* Data points */}
-                              {points.map((p, i) => (
-                                <circle
-                                  key={i}
-                                  cx={p.x}
-                                  cy={p.y}
-                                  r="2"
-                                  fill="rgb(239, 68, 68)"
-                                  stroke="white"
-                                  strokeWidth="0.8"
-                                />
-                              ))}
+
                             </svg>
                             {/* Hover areas with tooltips - positioned outside SVG */}
                             {points.map((p, i) => {
@@ -665,9 +654,13 @@ export default function Home() {
                               return (
                                 <div
                                   key={i}
-                                  className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
+                                  className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10 flex items-center justify-center"
                                   style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
                                 >
+                                  {/* Proper circular dot */}
+                                  <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.4)] group-hover:scale-125 transition-transform duration-200" />
+
+
                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
                                     <div className="bg-gray-900 px-3 py-2 rounded-lg shadow-xl text-center whitespace-nowrap border border-gray-600">
                                       <div className="text-xs font-semibold text-red-400">{month} {year}</div>
@@ -739,6 +732,57 @@ export default function Home() {
                 </div>
                 <p className="text-xs text-gray-400 mt-5">
                   Country estimates based on domain TLD, language detection, and global web traffic patterns.
+                </p>
+              </div>
+            )}
+
+            {/* ========= TOP KEYWORDS SECTION ========= */}
+            {result.topKeywords && result.topKeywords.length > 0 && (
+              <div className="rounded-3xl bg-white border border-gray-200 p-8 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  Top Search Keywords
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-xs text-gray-400 font-semibold border-b border-gray-100">
+                        <th className="pb-3 pr-4">Keyword</th>
+                        <th className="pb-3 pr-4 text-right">Search Volume</th>
+                        <th className="pb-3 text-right">CPC (Est.)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {result.topKeywords.map((k, i) => (
+                        <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
+                          <td className="py-4 pr-4">
+                            <span className="text-sm font-bold text-gray-800 group-hover:text-red-600 transition-colors">
+                              {k.name}
+                            </span>
+                          </td>
+                          <td className="py-4 pr-4 text-right">
+                            <span className="text-sm font-mono text-gray-600">
+                              {k.volume >= 1_000_000
+                                ? `${(k.volume / 1_000_000).toFixed(1)}M`
+                                : k.volume >= 1_000
+                                  ? `${(k.volume / 1_000).toFixed(0)}K`
+                                  : k.volume}
+                            </span>
+                          </td>
+                          <td className="py-4 text-right">
+                            <span className="text-sm text-emerald-600 font-semibold">
+                              {k.cpc != null ? `$${k.cpc.toFixed(2)}` : "—"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-400 mt-5">
+                  Estimated traffic-driving keywords and monthly search volume data.
                 </p>
               </div>
             )}
@@ -824,33 +868,33 @@ export default function Home() {
             {/* Performance Scores */}
             {(result.performance.scores.performance !== null ||
               result.performance.scores.seo !== null) && (
-              <div className="rounded-3xl bg-white border border-gray-200 p-8 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Lighthouse Scores
-                </h3>
-                <div className="flex flex-wrap justify-center gap-8">
-                  <ScoreRing
-                    score={result.performance.scores.performance}
-                    label="Performance"
-                  />
-                  <ScoreRing
-                    score={result.performance.scores.seo}
-                    label="SEO"
-                  />
-                  <ScoreRing
-                    score={result.performance.scores.accessibility}
-                    label="Accessibility"
-                  />
-                  <ScoreRing
-                    score={result.performance.scores.bestPractices}
-                    label="Best Practices"
-                  />
+                <div className="rounded-3xl bg-white border border-gray-200 p-8 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Lighthouse Scores
+                  </h3>
+                  <div className="flex flex-wrap justify-center gap-8">
+                    <ScoreRing
+                      score={result.performance.scores.performance}
+                      label="Performance"
+                    />
+                    <ScoreRing
+                      score={result.performance.scores.seo}
+                      label="SEO"
+                    />
+                    <ScoreRing
+                      score={result.performance.scores.accessibility}
+                      label="Accessibility"
+                    />
+                    <ScoreRing
+                      score={result.performance.scores.bestPractices}
+                      label="Best Practices"
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Chrome UX Report */}
             {result.traffic.hasChromeUserData && (
