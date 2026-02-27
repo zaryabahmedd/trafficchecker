@@ -13,8 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WebTraffic Analyzer - Estimate Any Website's Traffic",
-  description: "Free website traffic estimation tool. Get estimated monthly visits, global ranking, performance scores, and SEO insights for any website.",
+  title: "Free Website Traffic Checker With Fast Speed - Unlimited Use",
+  description: "Free website traffic checker with fast speed and unlimited use. Analyze any domain instantly with traffic estimates, rankings and useful SEO insights.",
+  icons: {
+    icon: "/image.png",
+    shortcut: "/image.png",
+    apple: "/image.png",
+  },
+  verification: {
+    google: "x8qqHJawJXmwMWPS3Qk4zs9TSpEYwx8Y9OdEsnoiIoQ",
+  },
 };
 
 export default function RootLayout({

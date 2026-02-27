@@ -328,11 +328,8 @@ export default function Home() {
             Free Website Traffic Analyzer
           </div>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-5">
-            <span className="text-gray-900">Website Traffic</span>
-            <br />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 via-red-500 to-rose-500">
-              Checker
-            </span>
+            <span className="text-gray-900">Free Website Traffic Checker - </span>
+            <span style={{ color: "#FD254B" }}>No limit</span>
           </h1>
           <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
             Enter any website URL to get estimated traffic data, global ranking,
@@ -515,16 +512,24 @@ export default function Home() {
                 </div>
 
                 {/* Data Sources Badge Row */}
-                {result.traffic.dataSources && result.traffic.dataSources.length > 0 && (
-                  <div className="flex items-center gap-2 mt-4 flex-wrap">
-                    <span className="text-xs text-gray-500">Data sources:</span>
-                    {result.traffic.dataSources.map((src) => (
-                      <span key={src} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-300 border border-red-500/20">
-                        {src}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  const visibleSources = (result.traffic.dataSources || []).filter(
+                    (src) => !/^similar\s*web$/i.test(src)
+                  );
+
+                  if (visibleSources.length === 0) return null;
+
+                  return (
+                    <div className="flex items-center gap-2 mt-4 flex-wrap">
+                      <span className="text-xs text-gray-500">Data sources:</span>
+                      {visibleSources.map((src) => (
+                        <span key={src} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-300 border border-red-500/20">
+                          {src}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Engagement Metrics */}
                 {result.traffic.engagement && (
