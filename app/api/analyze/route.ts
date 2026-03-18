@@ -785,10 +785,11 @@ export async function POST(req: NextRequest) {
       confidence = "Low";
       rangeFactor = 0.60;
     } else {
-      estimated = siteData.usesCDN ? 8_000 : 3_000;
-      dataSources.push("Heuristic Only");
+      // No data from SimilarWeb, Tranco, or CrUX — report 0 traffic (matches SimilarWeb extension behavior)
+      estimated = 0;
+      dataSources.push("No Data Available");
       confidence = "Very Low";
-      rangeFactor = 0.70;
+      rangeFactor = 0;
     }
 
     if (pagespeedData.hasCruxData && !dataSources.includes("Chrome UX Report")) {
