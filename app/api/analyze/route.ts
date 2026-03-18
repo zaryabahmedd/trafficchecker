@@ -593,15 +593,39 @@ async function fetchSimilarWebData(domain: string): Promise<SimilarWebData> {
 
     const data = await response.json();
 
-    // Parse monthly visits (newest first)
+    // Parse monthly visits (newest first) from multiple known payload shapes.
     const monthlyVisitHistory: { date: string; visits: number }[] = [];
-    if (data.EstimatedMonthlyVisits) {
-      const entries = Object.entries(data.EstimatedMonthlyVisits) as [string, number][];
-      for (const [date, visits] of entries.sort((a, b) => b[0].localeCompare(a[0]))) {
-        monthlyVisitHistory.push({ date, visits });
+
+    const pushVisitPoint = (rawDate: unknown, rawVisits: unknown) => {
+      if (typeof rawDate !== "string") return;
+      const parsedVisits = Number(rawVisits);
+      if (!Number.isFinite(parsedVisits) || parsedVisits < 0) return;
+      monthlyVisitHistory.push({ date: rawDate, visits: Math.round(parsedVisits) });
+    };
+
+    if (data.EstimatedMonthlyVisits && typeof data.EstimatedMonthlyVisits === "object") {
+      const entries = Object.entries(data.EstimatedMonthlyVisits as Record<string, unknown>);
+      for (const [date, visits] of entries) pushVisitPoint(date, visits);
+    }
+
+    // Some SimilarWeb payload variants use an array shape.
+    if (Array.isArray(data.MonthlyVisits)) {
+      for (const row of data.MonthlyVisits) {
+        if (!row || typeof row !== "object") continue;
+        const item = row as Record<string, unknown>;
+        pushVisitPoint(item.Date ?? item.date ?? item.Month ?? item.month, item.Visits ?? item.visits ?? item.Value ?? item.value);
       }
     }
+
+    monthlyVisitHistory.sort((a, b) => {
+      const ta = Date.parse(a.date);
+      const tb = Date.parse(b.date);
+      if (Number.isFinite(ta) && Number.isFinite(tb)) return tb - ta;
+      return b.date.localeCompare(a.date);
+    });
+
     const latestVisits = monthlyVisitHistory.length > 0 ? monthlyVisitHistory[0].visits : null;
+    const recentNonZero = monthlyVisitHistory.find((m) => m.visits > 0)?.visits ?? null;
 
     // Top countries (Value is decimal fraction, e.g. 0.246 = 24.6%)
     const topCountries: { code: string; percentage: number }[] = [];
@@ -630,9 +654,17 @@ async function fetchSimilarWebData(domain: string): Promise<SimilarWebData> {
     const rawRank = data.GlobalRank?.Rank ?? data.GlobalRank;
     const globalRank = typeof rawRank === 'number' ? rawRank : null;
 
+    // Use latest month when available; otherwise use recent non-zero history,
+    // then engagement total visits if SimilarWeb only exposes that field.
+    const estimatedMonthlyVisits =
+      (latestVisits != null && latestVisits > 0 ? latestVisits : null) ??
+      recentNonZero ??
+      (engagements.totalVisits != null && engagements.totalVisits > 0 ? engagements.totalVisits : null) ??
+      (latestVisits === 0 ? 0 : null);
+
     return {
       globalRank,
-      estimatedMonthlyVisits: latestVisits,
+      estimatedMonthlyVisits,
       monthlyVisitHistory,
       topCountries,
       engagements,
